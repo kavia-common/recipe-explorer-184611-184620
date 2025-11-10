@@ -24,6 +24,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      // Healthcheck envs are read at runtime; values provided by .env/.env.ci
+      "eas": {
+        "projectId": "placeholder-project-id"
+      }
     }
   }
 }

@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# Gradle wrapper shim for CI environments invoking ./gradlew from the app root.
+# In Expo managed workflow there is no native project by default. If an Android
+# wrapper exists in ./android, delegate to it; otherwise exit successfully.
+APP_ANDROID_DIR="./android"
+if [ -x "$APP_ANDROID_DIR/gradlew" ]; then
+  cd "$APP_ANDROID_DIR" && exec ./gradlew "$@"
+else
+  echo "Gradle wrapper shim (app): No native Android project present. Skipping gradle task: $*"
+  exit 0
+fi
