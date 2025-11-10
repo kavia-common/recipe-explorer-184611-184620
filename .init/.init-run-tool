@@ -1,0 +1,4 @@
+{
+    "command": "npm run web -- --port <port>",
+    "working_directory": "/home/kavia/workspace/code-generation/recipe-explorer-184611-184620/recipe_app_frontend"
+}
