@@ -6,11 +6,12 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "node ./scripts/pre-web-start.cjs && sh -c \"node ./preview-healthcheck-launcher.cjs & expo start --web\"",
+    "web": "node ./scripts/pre-web-start.cjs && sh -c \"node ./preview-healthcheck-launcher.cjs & expo start --web --port ${EXPO_PUBLIC_PORT:-3000}\"",
     "lint": "eslint .",
     "ci": "eslint .",
     "prebuild:android": "expo prebuild --platform android",
-    "build": "npm run prebuild:android && cd android && ./gradlew assembleDebug"
+    "build": "npm run prebuild:android && cd android && ./gradlew assembleDebug",
+    "postinstall": "node -e \"try{require.resolve('@react-native-async-storage/async-storage')}catch(e){process.exitCode=0}\""
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",

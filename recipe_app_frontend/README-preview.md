@@ -1,12 +1,12 @@
 # Preview/CI Readiness (App)
 
 - Preflight install:
-  - The `web` script runs a quick pre-check (`scripts/pre-web-start.cjs`) to install dependencies with `npm ci` or `npm install` if `node_modules` is missing. It also verifies `@react-native-async-storage/async-storage` presence.
+  - The `web` script runs a quick pre-check (`scripts/pre-web-start.cjs`) to install dependencies with `npm ci --prefer-offline --no-audit --silent` (or `npm install --prefer-offline --no-audit --silent`) if `node_modules` is missing. It also verifies `@react-native-async-storage/async-storage` presence and attempts to add it if absent.
 - Healthcheck server:
   - `node ./preview-healthcheck-launcher.cjs` starts a tiny Express server that binds to 0.0.0.0 and responds 200 at `${EXPO_PUBLIC_HEALTHCHECK_PATH:-/healthz}` on port `${EXPO_PUBLIC_PORT:-3000}`.
   - It tolerates EADDRINUSE if Expo already uses port 3000 and will use a fallback ephemeral port while Expo can serve the static `/healthcheck.html`.
 - Expo Web starts as usual:
-  - `expo start --web` (port may be set via `--port 3000` when invoked by CI).
+  - `expo start --web --port ${EXPO_PUBLIC_PORT:-3000}` (port is passed from env for consistency with the healthcheck server).
 - Configure envs via `.env`:
   - See `.env.example` for defaults.
 
