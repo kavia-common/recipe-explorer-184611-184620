@@ -17,10 +17,10 @@ The app uses only local mock data for now and stores saved recipe IDs locally.
 
 ## Preview healthcheck
 
-In CI/preview environments, we spin up a tiny Express server that responds with 200 OK at a configurable path (default `/healthz`) on port 3000 so the preview system can detect readiness while the Expo dev server is running.
+In CI/preview environments, we spin up a tiny Express server that responds with 200 OK at a configurable path (default `/healthz`) on port 3030 so the preview system can detect readiness while the Expo dev server is running.
 
 Environment variables (see `.env.example`):
-- EXPO_PUBLIC_PORT (default 3000)
+- EXPO_PUBLIC_PORT (default 3030)
 - EXPO_PUBLIC_HEALTHCHECK_PATH (default /healthz)
 - EXPO_PUBLIC_TRUST_PROXY (default true)
 - EXPO_PUBLIC_LOG_LEVEL (default info)

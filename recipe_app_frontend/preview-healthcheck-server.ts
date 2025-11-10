@@ -7,9 +7,9 @@ import express from 'express';
  * intended for CI/preview readiness checks while Metro/Expo is still bundling.
  *
  * Behavior:
- * - Binds to 0.0.0.0 on EXPO_PUBLIC_PORT (default 3000).
- * - If EADDRINUSE on primary port, tries a secondary ephemeral port but still relies on the Expo dev
- *   server to serve a static /healthz page via web/healthcheck.html (so readiness on port 3000 works).
+ * - Binds to 0.0.0.0 on EXPO_PUBLIC_PORT (default 3030).
+ * - If EADDRINUSE on the configured port we do NOT port drift; we log once and exit silently
+ *   because another process is already serving on the configured port (e.g., expo).
  * - Trusts proxy when EXPO_PUBLIC_TRUST_PROXY=true.
  * - Logs minimally unless EXPO_PUBLIC_LOG_LEVEL=silent.
  *
@@ -18,7 +18,7 @@ import express from 'express';
 // PUBLIC_INTERFACE
 export function startPreviewHealthcheckServer() {
   try {
-    const port = Number(process.env.EXPO_PUBLIC_PORT || 3000);
+    const port = Number(process.env.EXPO_PUBLIC_PORT || 3030);
     const trustProxy = (process.env.EXPO_PUBLIC_TRUST_PROXY || 'true').toLowerCase() === 'true';
     const logLevel = (process.env.EXPO_PUBLIC_LOG_LEVEL || 'info').toLowerCase();
     const healthPath = process.env.EXPO_PUBLIC_HEALTHCHECK_PATH || '/healthz';
@@ -44,39 +44,25 @@ export function startPreviewHealthcheckServer() {
       res.type('text/plain').send('Recipe App Preview Healthcheck Server');
     });
 
-    const listen = (bindPort: number) =>
-      app
-        .listen(bindPort, host, () => {
+    const listen = (bindPort: number) => {
+      const server = app.listen(bindPort, host, () => {
+        if (logLevel !== 'silent') {
+          console.log(`[preview-healthcheck] listening on ${host}:${bindPort}, path: ${healthPath}`);
+        }
+      });
+      server.on('error', (err: unknown) => {
+        const code = (err as { code?: string })?.code;
+        if (code === 'EADDRINUSE') {
+          // Do not drift to another port to avoid confusing the preview system.
           if (logLevel !== 'silent') {
-            console.log(`[preview-healthcheck] listening on ${host}:${bindPort}, path: ${healthPath}`);
+            console.warn(`[preview-healthcheck] port ${bindPort} in use; another process is listening (likely expo). Not starting duplicate server.`);
           }
-        })
-        .on('error', (err: unknown) => {
-          const code = (err as { code?: string })?.code;
-          if (code === 'EADDRINUSE') {
-            // If 3000 is taken by Expo, we still want readiness on 3000; Expo will serve the app.
-            if (logLevel !== 'silent') {
-              console.warn(`[preview-healthcheck] port ${bindPort} in use; assuming Expo dev server will serve ${healthPath}.`);
-            }
-            // Try a fallback port to keep a tiny server alive for logs, but do not crash.
-            try {
-              const fallback = 0; // ephemeral
-              const srv = app.listen(fallback, host, () => {
-                const addr = srv.address();
-                if (logLevel !== 'silent') {
-                  console.log('[preview-healthcheck] fallback healthcheck server listening on ephemeral port', addr);
-                }
-              });
-              // No return from here; this error handler isn't expected to return the fallback
-            } catch (e) {
-              if (logLevel !== 'silent') {
-                console.warn('[preview-healthcheck] failed to bind fallback port:', e);
-              }
-            }
-          } else {
-            console.warn('[preview-healthcheck] server error:', err);
-          }
-        });
+        } else {
+          console.warn('[preview-healthcheck] server error:', err);
+        }
+      });
+      return server;
+    };
 
     // Attempt binding to the requested port first
     const server = listen(port);

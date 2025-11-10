@@ -5,7 +5,7 @@
  * Avoids require() to satisfy lint rules by spawning a tiny ESM runner.
  *
  * Environment defaults:
- * - EXPO_PUBLIC_PORT=3000
+ * - EXPO_PUBLIC_PORT=3030
  * - EXPO_PUBLIC_HEALTHCHECK_PATH=/healthz
  * - EXPO_PUBLIC_HOST=0.0.0.0
  *
@@ -16,7 +16,7 @@
 (function main() {
   try {
     // Ensure defaults
-    process.env.EXPO_PUBLIC_PORT = process.env.EXPO_PUBLIC_PORT || '3000';
+    process.env.EXPO_PUBLIC_PORT = process.env.EXPO_PUBLIC_PORT || '3030';
     process.env.EXPO_PUBLIC_HEALTHCHECK_PATH = process.env.EXPO_PUBLIC_HEALTHCHECK_PATH || '/healthz';
     process.env.EXPO_PUBLIC_HOST = process.env.EXPO_PUBLIC_HOST || '0.0.0.0';
 
