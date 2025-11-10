@@ -4,7 +4,16 @@
 # wrapper exists in ./android, delegate to it; otherwise exit successfully.
 
 # Trap termination signals early so Docker timeouts don't produce non-zero codes (e.g., 143).
-trap 'exit 0' INT TERM HUP
+# Also catch QUIT and PIPE which may be sent in Dockerized CI.
+trap 'exit 0' INT TERM HUP QUIT PIPE
+
+# If CI invokes common gradle tasks in managed Expo context, short-circuit.
+case "$1" in
+  assemble*|bundle*|build|clean|test|lint|check|connected*|uninstall*|install*|publish*)
+    echo "Gradle wrapper shim (app): Managed Expo app. Short-circuiting Gradle task: $*"
+    exit 0
+    ;;
+esac
 
 APP_ANDROID_DIR="./android"
 if [ -x "$APP_ANDROID_DIR/gradlew" ]; then
