@@ -2,9 +2,13 @@ import { registerRootComponent } from 'expo';
 
 import App from './App';
 
-// In preview/CI environments, start a minimal Express healthcheck server that responds on
-// EXPO_PUBLIC_PORT (default 3000) at EXPO_PUBLIC_HEALTHCHECK_PATH (default /healthz).
-// This ensures the preview system detects readiness even though Expo dev server is not a typical web app server.
+/**
+ * In preview/CI environments, start a minimal Express healthcheck server that responds on:
+ * - EXPO_PUBLIC_PORT (default 3000)
+ * - EXPO_PUBLIC_HEALTHCHECK_PATH (default /healthz)
+ * The server binds to 0.0.0.0 and tolerates EADDRINUSE by letting Expo dev server own port 3000.
+ * This ensures the preview system detects readiness quickly while Metro bundles.
+ */
 try {
   // Only attempt to start the Node server when running in a web/Node context.
   // @ts-expect-error process is available at runtime in bundlers/Node (not typed in RN web context)

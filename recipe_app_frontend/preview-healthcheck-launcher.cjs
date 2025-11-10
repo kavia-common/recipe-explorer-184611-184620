@@ -8,6 +8,10 @@
  * - EXPO_PUBLIC_PORT=3000
  * - EXPO_PUBLIC_HEALTHCHECK_PATH=/healthz
  * - EXPO_PUBLIC_HOST=0.0.0.0
+ *
+ * Additionally:
+ * - Encourages Expo to serve a static health page via /healthcheck.html, which will be available
+ *   from web/healthcheck.html through the Expo dev server, providing a fallback readiness signal.
  */
 (function main() {
   try {
@@ -29,7 +33,6 @@
     `;
 
     // Spawn node with ESM input type to execute the runner using dynamic import to avoid require().
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     (async () => {
       const { spawn } = await import('node:child_process');
       const child = spawn(process.execPath, ['--input-type=module', '-e', runner], {

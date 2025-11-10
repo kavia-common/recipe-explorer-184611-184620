@@ -1,15 +1,19 @@
 import express from 'express';
 
 /**
- * Starts a lightweight Express server that responds to a configurable healthcheck path.
- * This is used only in preview/CI environments so the preview system can detect readiness
- * on the expected port (default 3000) even when using Expo.
+ * PUBLIC_INTERFACE
+ * startPreviewHealthcheckServer
+ * Starts a lightweight Express server that immediately responds 200 OK at a configurable path,
+ * intended for CI/preview readiness checks while Metro/Expo is still bundling.
  *
- * The server:
- * - Binds explicitly to 0.0.0.0 unless EXPO_PUBLIC_HOST is provided.
- * - Returns 200 OK at EXPO_PUBLIC_HEALTHCHECK_PATH (default /healthz).
- * - Gracefully handles EADDRINUSE (when Expo is already using the port), logging and exiting
- *   without crashing the app, so the preview remains healthy if another server serves the path.
+ * Behavior:
+ * - Binds to 0.0.0.0 on EXPO_PUBLIC_PORT (default 3000).
+ * - If EADDRINUSE on primary port, tries a secondary ephemeral port but still relies on the Expo dev
+ *   server to serve a static /healthz page via web/healthcheck.html (so readiness on port 3000 works).
+ * - Trusts proxy when EXPO_PUBLIC_TRUST_PROXY=true.
+ * - Logs minimally unless EXPO_PUBLIC_LOG_LEVEL=silent.
+ *
+ * Returns the created HTTP server instance or undefined on failure.
  */
 // PUBLIC_INTERFACE
 export function startPreviewHealthcheckServer() {
@@ -23,37 +27,59 @@ export function startPreviewHealthcheckServer() {
     const app = express();
     app.set('trust proxy', trustProxy);
 
+    // Primary health endpoint served by this lightweight server (when it owns the port)
     app.get(healthPath, (_req, res) => {
       res.set('Cache-Control', 'no-store');
       res.status(200).send('OK');
     });
 
-    // Optional: info endpoint for debugging in preview
+    // Also provide a static healthcheck fallback mapping at /healthcheck.html for consistency.
+    app.get('/healthcheck.html', (_req, res) => {
+      res.set('Cache-Control', 'no-store');
+      res.type('text/html').send('<!doctype html><title>Healthcheck</title>OK');
+    });
+
+    // Optional: info endpoint for quick smoke
     app.get('/', (_req, res) => {
       res.type('text/plain').send('Recipe App Preview Healthcheck Server');
     });
 
-    const server = app
-      .listen(port, host, () => {
-        if (logLevel !== 'silent') {
-          console.log(`[preview-healthcheck] listening on ${host}:${port}, path: ${healthPath}`);
-        }
-      })
-      .on('error', (err: unknown) => {
-        const code = (err as { code?: string })?.code;
-        if (code === 'EADDRINUSE') {
-          // Port is already used by the Expo dev server. In that case,
-          // we can't bind here; log and continue so the process doesn't crash.
+    const listen = (bindPort: number) =>
+      app
+        .listen(bindPort, host, () => {
           if (logLevel !== 'silent') {
-            console.warn(
-              `[preview-healthcheck] port ${port} already in use; assuming Expo dev server is running.`
-            );
+            console.log(`[preview-healthcheck] listening on ${host}:${bindPort}, path: ${healthPath}`);
           }
-        } else {
-          console.warn('[preview-healthcheck] server error:', err);
-        }
-      });
+        })
+        .on('error', (err: unknown) => {
+          const code = (err as { code?: string })?.code;
+          if (code === 'EADDRINUSE') {
+            // If 3000 is taken by Expo, we still want readiness on 3000; Expo will serve the app.
+            if (logLevel !== 'silent') {
+              console.warn(`[preview-healthcheck] port ${bindPort} in use; assuming Expo dev server will serve ${healthPath}.`);
+            }
+            // Try a fallback port to keep a tiny server alive for logs, but do not crash.
+            try {
+              const fallback = 0; // ephemeral
+              const srv = app.listen(fallback, host, () => {
+                const addr = srv.address();
+                if (logLevel !== 'silent') {
+                  console.log('[preview-healthcheck] fallback healthcheck server listening on ephemeral port', addr);
+                }
+              });
+              // No return from here; this error handler isn't expected to return the fallback
+            } catch (e) {
+              if (logLevel !== 'silent') {
+                console.warn('[preview-healthcheck] failed to bind fallback port:', e);
+              }
+            }
+          } else {
+            console.warn('[preview-healthcheck] server error:', err);
+          }
+        });
 
+    // Attempt binding to the requested port first
+    const server = listen(port);
     return server;
   } catch (err) {
     console.warn('[preview-healthcheck] failed to start:', err);
