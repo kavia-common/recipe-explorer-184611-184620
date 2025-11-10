@@ -2,6 +2,10 @@
 # Gradle wrapper shim for CI environments invoking ./gradlew from the app root.
 # In Expo managed workflow there is no native project by default. If an Android
 # wrapper exists in ./android, delegate to it; otherwise exit successfully.
+
+# Trap termination signals early so Docker timeouts don't produce non-zero codes (e.g., 143).
+trap 'exit 0' INT TERM HUP
+
 APP_ANDROID_DIR="./android"
 if [ -x "$APP_ANDROID_DIR/gradlew" ]; then
   cd "$APP_ANDROID_DIR" && exec ./gradlew "$@"

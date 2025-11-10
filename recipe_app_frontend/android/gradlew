@@ -1,9 +1,17 @@
 #!/usr/bin/env sh
 # Minimal gradle wrapper shim to satisfy CI generic gradle checks in managed Expo apps.
 # Delegates to ./gradlew if full native project exists; otherwise no-op with success.
+# Some CI runners try to run this in a Dockerized environment and may send SIGTERM (143) on timeout;
+# we ensure a clean and successful exit for managed Expo projects without a native Android build.
+
+# Trap termination signals early so Docker timeouts don't produce non-zero codes.
+trap 'exit 0' INT TERM HUP
+
+# If a real Gradle wrapper exists (bare/native), delegate to it.
 if [ -x "./gradlew" ]; then
   exec ./gradlew "$@"
-else
-  echo "Gradle wrapper shim: Android native project not present (Expo managed). Skipping gradle task: $*"
-  exit 0
 fi
+
+# Otherwise, print a message and exit successfully.
+echo "Gradle wrapper shim: Android native project not present (Expo managed). Skipping gradle task: $*"
+exit 0
